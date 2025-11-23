@@ -6,7 +6,7 @@ interface FocusTimeVisualProps {
 
 export const FocusTimeVisual = ({ stats }: FocusTimeVisualProps) => {
   const totalMinutesInDay = 24 * 60; // 1440 minutes
-  const focusMinutes = stats.total_focus_time || 0;
+  const focusMinutes = Math.floor(stats.total_focus_time / 60); // Convert seconds to minutes
   const nonFocusMinutes = totalMinutesInDay - focusMinutes;
   const focusPercentage = (focusMinutes / totalMinutesInDay) * 100;
   

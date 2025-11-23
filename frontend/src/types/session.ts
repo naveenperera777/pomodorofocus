@@ -1,25 +1,104 @@
-export interface Session {
+// ===== CATEGORY TYPES =====
+export interface Category {
   id: number;
-  start_time: string;
-  end_time: string | null;
-  duration: number; // planned duration
-  actual_duration: number | null; // actual duration based on timestamps
-  status: 'in_progress' | 'successful' | 'unsuccessful';
-  date: string;
+  name: string;
+  color: string; // hex color code
+  is_quick_focus: boolean;
   created_at: string;
 }
 
-export interface DailyStats {
-  total_sessions: number;
-  successful_sessions: number;
-  unsuccessful_sessions: number;
-  total_focus_time: number;
+export interface CreateCategoryDTO {
+  name: string;
+  color: string;
+}
+
+export interface UpdateCategoryDTO {
+  name?: string;
+  color?: string;
+}
+
+// ===== TASK TYPES =====
+export interface Task {
+  id: number;
+  user_id: string;
+  category_id: number;
+  name: string | null; // nullable for Quick Focus auto-tasks
+  date: string; // ISO date string (YYYY-MM-DD)
+  planned_start_time: string; // TIME format (HH:MM:SS)
+  planned_end_time: string; // TIME format (HH:MM:SS)
+  status: 'active' | 'completed';
+  created_at: string;
+  updated_at: string;
+  // Relations
+  category?: Category;
+  category_name?: string;
+  category_color?: string;
+  sessions?: Session[];
+}
+
+export interface CreateTaskDTO {
+  category_id: number;
+  name?: string; // optional for Quick Focus
+  date: string; // ISO date string (YYYY-MM-DD)
+  planned_start_time: string; // HH:MM format
+  planned_end_time: string; // HH:MM format
+}
+
+export interface UpdateTaskDTO {
+  name?: string;
+  planned_start_time?: string;
+  planned_end_time?: string;
+}
+
+// ===== SESSION TYPES =====
+export interface Session {
+  id: number;
+  task_id: number; // Required - sessions must belong to a task
+  start_time: string;
+  end_time: string | null;
+  actual_duration: number | null; // actual duration in seconds
+  status: 'in_progress' | 'completed' | 'abandoned';
+  created_at: string;
+  // Relations
+  task?: Task;
 }
 
 export interface CreateSessionDTO {
-  duration: number;
+  task_id: number;
 }
 
 export interface UpdateSessionDTO {
-  status: 'successful' | 'unsuccessful';
+  status: 'completed' | 'abandoned';
+}
+
+// ===== ANALYTICS TYPES =====
+export interface TaskWithSessions extends Task {
+  sessions: Session[];
+  total_focus_time: number; // sum of session durations
+  session_count: number;
+}
+
+export interface CategoryStats {
+  category_id: number;
+  category_name: string;
+  category_color: string;
+  total_focus_time: number; // sum across all tasks in this category
+  task_count: number;
+  session_count: number;
+}
+
+export interface DailyStats {
+  date: string;
+  total_focus_time: number;
+  category_stats: CategoryStats[];
+}
+
+export interface DateRangeStat {
+  date: string;
+  category_id: number;
+  category_name: string;
+  category_color: string;
+  task_count: number;
+  session_count: number;
+  total_focus_time: number;
 }

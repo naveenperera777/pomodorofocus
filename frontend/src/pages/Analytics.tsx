@@ -1,17 +1,11 @@
 import { useEffect, useState } from 'react';
 import { format, subDays } from 'date-fns';
 import { sessionApi } from '../api/session.api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-
-interface DateRangeStat {
-  date: string;
-  total_sessions: number;
-  successful_sessions: number;
-  focus_minutes: number;
-}
+import { CategoryStats } from '../types/session';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
 export default function Analytics() {
-  const [stats, setStats] = useState<DateRangeStat[]>([]);
+  const [stats, setStats] = useState<CategoryStats[]>([]);
   const [period, setPeriod] = useState<7 | 14 | 30>(7);
   const [loading, setLoading] = useState(true);
 
@@ -33,14 +27,25 @@ export default function Analytics() {
     }
   };
 
-  const totalFocusMinutes = stats.reduce((sum, day) => sum + (day.focus_minutes || 0), 0);
-  const totalSessions = stats.reduce((sum, day) => sum + day.total_sessions, 0);
-  const totalSuccessful = stats.reduce((sum, day) => sum + day.successful_sessions, 0);
-  const avgFocusPerDay = stats.length > 0 ? Math.round(totalFocusMinutes / stats.length) : 0;
+  const totalFocusTime = stats.reduce((sum, cat) => sum + cat.total_focus_time, 0);
+  const totalSessions = stats.reduce((sum, cat) => sum + cat.session_count, 0);
+  const totalTasks = stats.reduce((sum, cat) => sum + cat.task_count, 0);
+  const avgFocusPerDay = stats.length > 0 ? Math.round(totalFocusTime / period / 60) : 0;
+
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
 
   const chartData = stats.map(stat => ({
-    date: format(new Date(stat.date), 'MMM dd'),
-    minutes: stat.focus_minutes || 0
+    category: stat.category_name,
+    minutes: Math.round(stat.total_focus_time / 60),
+    sessions: stat.session_count,
+    color: stat.category_color
   }));
 
   return (
@@ -72,11 +77,11 @@ export default function Analytics() {
         ) : (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <div className="bg-white rounded-xl shadow-sm p-6 border border-secondary">
                 <div className="text-sm text-text-muted mb-1">Total Focus Time</div>
                 <div className="text-3xl font-bold text-primary">
-                  {Math.floor(totalFocusMinutes / 60)}h {totalFocusMinutes % 60}m
+                  {formatDuration(totalFocusTime)}
                 </div>
               </div>
 
@@ -89,61 +94,93 @@ export default function Analytics() {
                 <div className="text-sm text-text-muted mb-1">Total Sessions</div>
                 <div className="text-3xl font-bold text-text-primary">{totalSessions}</div>
               </div>
-
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-secondary">
-                <div className="text-sm text-text-muted mb-1">Success Rate</div>
-                <div className="text-3xl font-bold text-primary">
-                  {totalSessions > 0 ? Math.round((totalSuccessful / totalSessions) * 100) : 0}%
-                </div>
-              </div>
             </div>
 
-            {/* Chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-secondary">
-              <h2 className="text-xl font-semibold text-text-primary mb-6">Focus Minutes Trend</h2>
+            {/* Category Breakdown Chart */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-secondary mb-8">
+              <h2 className="text-xl font-semibold text-text-primary mb-6">Focus Time by Category</h2>
               
               {stats.length === 0 ? (
                 <div className="text-center py-12 text-text-muted">
                   No data available for this period. Start some sessions to see your progress!
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E0E5D4" />
-                    <XAxis 
-                      dataKey="date" 
-                      stroke="#8C8E8A"
-                      style={{ fontSize: '12px' }}
-                    />
-                    <YAxis 
-                      stroke="#8C8E8A"
-                      style={{ fontSize: '12px' }}
-                      label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#FAF9F7', 
-                        border: '1px solid #E0E5D4',
-                        borderRadius: '8px',
-                        color: '#2F302F'
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="minutes" 
-                      stroke="#A8B8A5" 
-                      strokeWidth={3}
-                      dot={{ fill: '#A8B8A5', r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E0E5D4" />
+                      <XAxis 
+                        dataKey="category" 
+                        stroke="#8C8E8A"
+                        style={{ fontSize: '12px' }}
+                      />
+                      <YAxis 
+                        stroke="#8C8E8A"
+                        style={{ fontSize: '12px' }}
+                        label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#FAF9F7', 
+                          border: '1px solid #E0E5D4',
+                          borderRadius: '8px',
+                          color: '#2F302F'
+                        }}
+                      />
+                      <Legend />
+                      <Bar 
+                        dataKey="minutes" 
+                        fill="#A8B8A5"
+                        radius={[8, 8, 0, 0]}
+                      />
+                      <Bar 
+                        dataKey="sessions" 
+                        fill="#C27C4A"
+                        radius={[8, 8, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  {/* Category Details */}
+                  <div className="mt-6 space-y-3">
+                    {stats.map((stat) => (
+                      <div 
+                        key={stat.category_id}
+                        className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div 
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: stat.category_color }}
+                          />
+                          <div>
+                            <div className="font-medium text-text-primary">
+                              {stat.category_name}
+                            </div>
+                            <div className="text-xs text-text-muted">
+                              {stat.task_count} task{stat.task_count !== 1 ? 's' : ''} • 
+                              {' '}{stat.session_count} session{stat.session_count !== 1 ? 's' : ''}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-primary">
+                            {formatDuration(stat.total_focus_time)}
+                          </div>
+                          <div className="text-xs text-text-muted">
+                            {Math.round((stat.total_focus_time / totalFocusTime) * 100)}% of total
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
             {/* Insights */}
             {stats.length > 0 && (
-              <div className="mt-8 bg-gradient-to-r from-primary/10 to-secondary rounded-xl p-6 border border-primary/20">
+              <div className="bg-gradient-to-r from-primary/10 to-secondary rounded-xl p-6 border border-primary/20">
                 <h3 className="text-lg font-semibold text-text-primary mb-2">📈 Insights</h3>
                 <ul className="space-y-2 text-text-primary">
                   {avgFocusPerDay >= 60 && (
@@ -152,14 +189,17 @@ export default function Analytics() {
                   {avgFocusPerDay >= 30 && avgFocusPerDay < 60 && (
                     <li>• Great progress! You're building a solid focus habit. Keep it up! 💪</li>
                   )}
-                  {totalSuccessful / totalSessions >= 0.8 && totalSessions >= 5 && (
-                    <li>• Excellent success rate! You're staying committed to your sessions. 🌟</li>
+                  {totalSessions >= 20 && (
+                    <li>• Excellent commitment! You've completed {totalSessions} sessions in {period} days. 🌟</li>
                   )}
-                  {stats.filter(s => s.focus_minutes > 0).length >= period - 2 && (
-                    <li>• Fantastic consistency! You've been active almost every day. 🔥</li>
+                  {totalTasks >= 10 && (
+                    <li>• Fantastic productivity! You've worked on {totalTasks} different tasks. 🎯</li>
                   )}
                   {avgFocusPerDay < 30 && totalSessions > 0 && (
                     <li>• Try to aim for at least 30 minutes per day to build stronger focus habits. 🎯</li>
+                  )}
+                  {stats.length > 1 && (
+                    <li>• You're diversifying your focus across {stats.length} different categories! 🌈</li>
                   )}
                 </ul>
               </div>

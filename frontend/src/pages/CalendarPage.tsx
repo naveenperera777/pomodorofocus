@@ -5,7 +5,7 @@ import { SuccessVisualization } from '../components/SuccessVisualization';
 import { DailyView } from '../components/DailyView';
 import { sessionApi } from '../api/session.api';
 import { useSessionStore } from '../store/sessionStore';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 
 export const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -34,15 +34,9 @@ export const CalendarPage = () => {
     }
   };
 
-  const loadMonthSessionCounts = async (date: Date) => {
+  const loadMonthSessionCounts = async (_date: Date) => {
     try {
-      const monthStart = startOfMonth(date);
-      const monthEnd = endOfMonth(date);
-      
       // Load sessions for the entire month to show indicators on calendar
-      const startDate = format(monthStart, 'yyyy-MM-dd');
-      const endDate = format(monthEnd, 'yyyy-MM-dd');
-      
       // We'll need to fetch day by day or add a new API endpoint
       // For now, let's just load the current month's data
       const counts: Record<string, number> = {};
@@ -80,14 +74,7 @@ export const CalendarPage = () => {
           {/* Stats and Visualizations */}
           <div className="space-y-6">
             <Stats stats={stats} selectedDate={selectedDate} />
-            <SuccessVisualization 
-              stats={stats || { 
-                total_sessions: 0, 
-                successful_sessions: 0, 
-                unsuccessful_sessions: 0, 
-                total_focus_time: 0 
-              }} 
-            />
+            {stats && <SuccessVisualization stats={stats} />}
           </div>
         </div>
 
