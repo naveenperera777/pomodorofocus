@@ -36,7 +36,6 @@ export const Home = () => {
     try {
       setLoading(true);
       const todayStr = format(today, 'yyyy-MM-dd');
-      console.log('Loading data for:', todayStr);
       const [sessionsData, statsData, activeTaskData, categoriesData, inProgressSession] = await Promise.all([
         sessionApi.getSessionsByDate(todayStr),
         sessionApi.getDailyStats(todayStr),
@@ -44,12 +43,6 @@ export const Home = () => {
         categories.length > 0 ? Promise.resolve(categories) : categoryApi.getAllCategories(),
         sessionApi.getInProgressSession()
       ]);
-      
-      console.log('Data loaded:', {
-        sessions: sessionsData.length,
-        activeTask: activeTaskData,
-        inProgressSession: inProgressSession
-      });
       
       setSessions(sessionsData);
       setStats(statsData);
@@ -63,17 +56,34 @@ export const Home = () => {
     }
   };
 
-  const handleStartSession = async () => {
-    console.log('handleStartSession called, activeTask:', activeTask);
+  const handleStartSession = async (duration?: number) => {
     if (!activeTask) {
-      console.log('No active task, returning early');
+      alert('No active task found! Please create a task first.');
       return;
     }
     
     try {
-      console.log('Creating session for task:', activeTask.id);
+      // If duration is provided, update the task's planned_end_time first
+      if (duration) {
+        const now = new Date();
+        const endTime = new Date(now.getTime() + duration * 60 * 1000);
+        const endTimeStr = endTime.toTimeString().slice(0, 8); // HH:MM:SS format
+        
+        // Update the task with new end time
+        await taskApi.updateTask(activeTask.id, {
+          category_id: activeTask.category_id,
+          name: activeTask.name || 'Untitled',
+          date: activeTask.date,
+          planned_start_time: activeTask.planned_start_time,
+          planned_end_time: endTimeStr
+        });
+        
+        // Refresh active task
+        const updatedTask = await taskApi.getActiveTask();
+        setActiveTask(updatedTask);
+      }
+      
       const session = await sessionApi.createSession(activeTask.id);
-      console.log('Session created:', session);
       addSession(session);
       setCurrentSession(session);
     } catch (error: any) {

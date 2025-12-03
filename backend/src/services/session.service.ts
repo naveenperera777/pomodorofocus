@@ -160,7 +160,7 @@ export const sessionService = {
        FROM sessions s
        JOIN tasks t ON s.task_id = t.id
        JOIN categories c ON t.category_id = c.id
-       WHERE t.user_id = $1 AND s.status = 'active'
+       WHERE t.user_id = $1 AND s.status = 'in_progress'
        LIMIT 1`,
       [userId]
     );

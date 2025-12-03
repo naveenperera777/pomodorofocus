@@ -8,7 +8,7 @@ interface TimerProps {
 }
 
 export const Timer = ({ session, onComplete, onAbandon }: TimerProps) => {
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(-1); // -1 indicates not yet calculated
   const [totalDuration, setTotalDuration] = useState(0);
   const [isRunning, setIsRunning] = useState(true);
   const hasCompleted = useRef(false);
@@ -36,11 +36,26 @@ export const Timer = ({ session, onComplete, onAbandon }: TimerProps) => {
     
     setTotalDuration(total);
     setTimeLeft(Math.max(0, remaining));
+    
+    // If the task end time is in the past, don't auto-complete
+    // Let the user manually complete or abandon the session
+    if (remaining < 0) {
+      setIsRunning(false);
+    }
   }, [session]);
 
   useEffect(() => {
-    if (!isRunning || timeLeft <= 0) {
-      if (timeLeft <= 0 && !hasCompleted.current) {
+    if (!isRunning) {
+      return;
+    }
+    
+    // Don't start countdown until timeLeft has been calculated
+    if (timeLeft < 0) {
+      return;
+    }
+    
+    if (timeLeft <= 0) {
+      if (!hasCompleted.current) {
         hasCompleted.current = true;
         onComplete();
       }
@@ -51,6 +66,10 @@ export const Timer = ({ session, onComplete, onAbandon }: TimerProps) => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           setIsRunning(false);
+          if (!hasCompleted.current) {
+            hasCompleted.current = true;
+            onComplete();
+          }
           return 0;
         }
         return prev - 1;
