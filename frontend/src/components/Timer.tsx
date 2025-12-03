@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Session } from '../types/session';
+import alarmSound from '../assets/alarm.mp3';
 
 interface TimerProps {
   session: Session;
@@ -12,6 +13,49 @@ export const Timer = ({ session, onComplete, onAbandon }: TimerProps) => {
   const [totalDuration, setTotalDuration] = useState(0);
   const [isRunning, setIsRunning] = useState(true);
   const hasCompleted = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize audio on component mount
+  useEffect(() => {
+    audioRef.current = new Audio(alarmSound);
+    audioRef.current.volume = 1.0; // Max volume
+    
+    // Log when audio is ready
+    audioRef.current.addEventListener('canplaythrough', () => {
+      console.log('Alarm audio loaded successfully');
+    });
+    
+    audioRef.current.addEventListener('error', (e) => {
+      console.error('Failed to load alarm audio:', e);
+    });
+    
+    // Preload the audio
+    audioRef.current.load();
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const playAlarmSound = () => {
+    console.log('Attempting to play alarm sound...');
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play()
+        .then(() => {
+          console.log('Alarm sound played successfully');
+          // Play it 3 times for emphasis
+          setTimeout(() => audioRef.current?.play(), 500);
+          setTimeout(() => audioRef.current?.play(), 1000);
+        })
+        .catch(err => console.error('Failed to play alarm:', err));
+    } else {
+      console.error('Audio ref is null');
+    }
+  };
 
   useEffect(() => {
     // Calculate total duration and time left from session timestamps
@@ -57,7 +101,9 @@ export const Timer = ({ session, onComplete, onAbandon }: TimerProps) => {
     if (timeLeft <= 0) {
       if (!hasCompleted.current) {
         hasCompleted.current = true;
-        onComplete();
+        playAlarmSound();
+        // Delay completion to let alarm play
+        setTimeout(() => onComplete(), 2000);
       }
       return;
     }
@@ -68,7 +114,9 @@ export const Timer = ({ session, onComplete, onAbandon }: TimerProps) => {
           setIsRunning(false);
           if (!hasCompleted.current) {
             hasCompleted.current = true;
-            onComplete();
+            playAlarmSound();
+            // Delay completion to let alarm play
+            setTimeout(() => onComplete(), 2000);
           }
           return 0;
         }
