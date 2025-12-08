@@ -3,13 +3,16 @@ import { Calendar } from '../components/Calendar';
 import { Stats } from '../components/Stats';
 import { SuccessVisualization } from '../components/SuccessVisualization';
 import { DailyView } from '../components/DailyView';
-import { sessionApi } from '../api/session.api';
+import { Productivity } from '../components/Productivity';
+import { sessionApi, taskApi } from '../api/session.api';
 import { useSessionStore } from '../store/sessionStore';
+import { Task } from '../types/session';
 import { format } from 'date-fns';
 
 export const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [sessionsCountMap, setSessionsCountMap] = useState<Record<string, number>>({});
+  const [tasks, setTasks] = useState<Task[]>([]);
   const { sessions, stats, setSessions, setStats } = useSessionStore();
 
   useEffect(() => {
@@ -23,12 +26,14 @@ export const CalendarPage = () => {
   const loadDateData = async (date: Date) => {
     try {
       const dateStr = format(date, 'yyyy-MM-dd');
-      const [sessionsData, statsData] = await Promise.all([
+      const [sessionsData, statsData, tasksData] = await Promise.all([
         sessionApi.getSessionsByDate(dateStr),
-        sessionApi.getDailyStats(dateStr)
+        sessionApi.getDailyStats(dateStr),
+        taskApi.getTasksByDate(dateStr)
       ]);
       setSessions(sessionsData);
       setStats(statsData);
+      setTasks(tasksData);
     } catch (error) {
       console.error('Error loading date data:', error);
     }
@@ -73,6 +78,7 @@ export const CalendarPage = () => {
 
           {/* Stats and Visualizations */}
           <div className="space-y-6">
+            <Productivity sessions={sessions} tasks={tasks} selectedDate={selectedDate} />
             <Stats stats={stats} selectedDate={selectedDate} />
             {stats && <SuccessVisualization stats={stats} />}
           </div>
