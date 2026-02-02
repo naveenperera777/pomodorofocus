@@ -63,31 +63,34 @@ export const Home = () => {
     }
     
     try {
-      // If duration is provided, update the task's planned_end_time first
+      // If duration is provided, temporarily update task end time for this session
+      let taskToUse = activeTask;
+      
       if (duration) {
+        // Calculate new end time based on current time + duration
         const now = new Date();
         const endTime = new Date(now.getTime() + duration * 60 * 1000);
         const endTimeStr = endTime.toTimeString().slice(0, 8); // HH:MM:SS format
         
-        // Update the task with new end time
-        await taskApi.updateTask(activeTask.id, {
-          category_id: activeTask.category_id,
-          name: activeTask.name || 'Untitled',
-          date: activeTask.date,
-          planned_start_time: activeTask.planned_start_time,
+        // Create a modified task object with new end time (don't save to DB)
+        taskToUse = {
+          ...activeTask,
           planned_end_time: endTimeStr
-        });
-        
-        // Refresh active task
-        const updatedTask = await taskApi.getActiveTask();
-        setActiveTask(updatedTask);
+        };
       }
       
       const session = await sessionApi.createSession(activeTask.id);
+      
+      // If we modified the end time, update the session's task data locally
+      if (duration && session.task) {
+        session.task.planned_end_time = taskToUse.planned_end_time;
+      }
+      
       addSession(session);
       setCurrentSession(session);
     } catch (error: any) {
       console.error('Error starting session:', error);
+      console.error('Session error details:', error.response?.data);
       alert(error.response?.data?.error || 'Failed to start session');
     }
   };

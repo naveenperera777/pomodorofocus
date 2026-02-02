@@ -10,11 +10,11 @@ interface SessionSelectorProps {
 }
 
 const DURATION_OPTIONS = [
-  { label: '1 min', value: 1, description: 'Quick Test' },
-  { label: '2 min', value: 2, description: 'Short Focus' },
-  { label: '3 min', value: 3, description: 'Mini Session' },
-  { label: '4 min', value: 4, description: 'Brief Work' },
   { label: '5 min', value: 5, description: 'Quick Focus' },
+  { label: '10 min', value: 10, description: 'Short Session' },
+  { label: '15 min', value: 15, description: 'Standard' },
+  { label: '20 min', value: 20, description: 'Deep Focus' },
+  { label: '25 min', value: 25, description: 'Pomodoro' },
 ];
 
 export const SessionSelector = ({ 
