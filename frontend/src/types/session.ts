@@ -101,4 +101,5 @@ export interface DateRangeStat {
   task_count: number;
   session_count: number;
   total_focus_time: number;
+  planned_focus_time: number;
 }

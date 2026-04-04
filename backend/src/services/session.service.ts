@@ -237,20 +237,39 @@ export const sessionService = {
   // Get date range stats
   async getDateRangeStats(startDate: string, endDate: string, userId: string = 'default_user') {
     const result = await query(
-      `SELECT 
-        t.date,
+      `WITH task_planned AS (
+        SELECT 
+          t.id as task_id,
+          t.date,
+          t.category_id,
+          EXTRACT(EPOCH FROM (t.planned_end_time - t.planned_start_time)) as planned_seconds
+        FROM tasks t
+        WHERE t.user_id = $1 AND t.date >= $2 AND t.date <= $3
+      ),
+      session_stats AS (
+        SELECT 
+          t.id as task_id,
+          COUNT(s.id) as session_count,
+          COALESCE(SUM(s.actual_duration), 0) as actual_seconds
+        FROM tasks t
+        LEFT JOIN sessions s ON t.id = s.task_id AND s.status = 'completed'
+        WHERE t.user_id = $1 AND t.date >= $2 AND t.date <= $3
+        GROUP BY t.id
+      )
+      SELECT 
+        tp.date,
         c.id as category_id,
         c.name as category_name,
         c.color as category_color,
-        COUNT(DISTINCT t.id) as task_count,
-        COUNT(s.id) as session_count,
-        COALESCE(SUM(s.actual_duration), 0) as total_focus_time
-       FROM tasks t
-       JOIN categories c ON t.category_id = c.id
-       LEFT JOIN sessions s ON t.id = s.task_id AND s.status = 'completed'
-       WHERE t.user_id = $1 AND t.date >= $2 AND t.date <= $3
-       GROUP BY t.date, c.id, c.name, c.color
-       ORDER BY t.date ASC, total_focus_time DESC`,
+        COUNT(DISTINCT tp.task_id) as task_count,
+        COALESCE(SUM(ss.session_count), 0) as session_count,
+        COALESCE(SUM(ss.actual_seconds), 0) as total_focus_time,
+        COALESCE(SUM(tp.planned_seconds), 0) as planned_focus_time
+      FROM task_planned tp
+      JOIN categories c ON tp.category_id = c.id
+      LEFT JOIN session_stats ss ON tp.task_id = ss.task_id
+      GROUP BY tp.date, c.id, c.name, c.color
+      ORDER BY tp.date ASC, total_focus_time DESC`,
       [userId, startDate, endDate]
     );
     
